@@ -425,3 +425,92 @@ class MyDecisionTreeClassifier:
             You will need to install graphviz in the Docker container as shown in class to complete this method.
         """
         pass # TODO: (BONUS) fix this
+
+class MyRandomForestClassifier:
+    """Represents a decision tree classifier.
+
+    Attributes:
+        X_train(list of list of obj): The list of training instances (samples). 
+                The shape of X_train is (n_train_samples, n_features)
+        y_train(list of obj): The target y values (parallel to X_train). 
+            The shape of y_train is n_samples
+        tree(nested list): The extracted tree model.
+
+    Notes:
+        Loosely based on sklearn's DecisionTreeClassifier: https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html
+        Terminology: instance = sample = row and attribute = feature = column
+    """
+    def __init__(self, F=2, N=4, M=3):
+        """Initializer for MyDecisionTreeClassifier.
+
+        """
+        self.X_train = None 
+        self.y_train = None
+        self.trees = []
+        self.N = N
+        self.M = M
+        self.F = F
+
+    def fit(self, X_train, y_train):
+        """Fits a decision tree classifier to X_train and y_train using the TDIDT (top down induction of decision tree) algorithm.
+
+        Args:
+            X_train(list of list of obj): The list of training instances (samples). 
+                The shape of X_train is (n_train_samples, n_features)
+            y_train(list of obj): The target y values (parallel to X_train)
+                The shape of y_train is n_train_samples
+
+        Notes:
+            Since TDIDT is an eager learning algorithm, this method builds a decision tree model
+                from the training data.
+            Build a decision tree using the nested list representation described in class.
+            Store the tree in the tree attribute.
+            Use attribute indexes to construct default attribute names (e.g. "att0", "att1", ...).
+        """
+        header = ['att' + str(i) for i in range(len(X_train[0]))]
+        attribute_domains = {}
+        for i, val in enumerate(header):
+            attribute_domains[val] = myutils.unique_index(X_train, i)
+
+        train = [X_train[i] + [y_train[i]] for i in range(len(X_train))]
+        available_attributes = header.copy()
+        self.X_train = X_train
+        self.y_train = y_train
+        for _ in range(self.N):
+            self.trees.append(myutils.tdidt(myutils.compute_bootstrapped_sample(self.X_train), available_attributes, attribute_domains, header))
+        
+    def predict(self, X_test):
+        """Makes predictions for test instances in X_test.
+
+        Args:
+            X_test(list of list of obj): The list of testing samples
+                The shape of X_test is (n_test_samples, n_features)
+
+        Returns:
+            y_predicted(list of obj): The predicted target y values (parallel to X_test)
+        """
+        header = ['att' + str(i) for i in range(len(X_test[0]))]
+        res = []
+        for row in X_test:
+            res.append(myutils.tdidt_predict(header, self.tree, row))
+        return res
+
+    def print_decision_rules(self, attribute_names=None, class_name="class"):
+        """Prints the decision rules from the tree in the format "IF att == val AND ... THEN class = label", one rule on each line.
+
+        Args:
+            attribute_names(list of str or None): A list of attribute names to use in the decision rules
+                (None if a list is not provided and the default attribute names based on indexes (e.g. "att0", "att1", ...) should be used).
+            class_name(str): A string to use for the class name in the decision rules
+                ("class" if a string is not provided and the default name "class" should be used).
+        """
+        header = []
+        if attribute_names != None:
+            header = attribute_names
+        else:
+            header = ['att' + str(i) for i in range(len(self.X_train[0]))]
+
+        for i in range(2, len(self.tree)):
+            built_string = 'IF ' + self.tree[1] + ' == '
+            print('IF', self.tree[1], '==', end=' ')
+            myutils.print_tree(header, self.tree[i], class_name, built_string)

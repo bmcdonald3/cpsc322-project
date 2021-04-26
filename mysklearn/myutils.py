@@ -3,6 +3,21 @@ import operator
 import copy
 import random
 
+# tree stuff
+def compute_random_subset(values, num_values):
+    shuffled = values[:] # shallow copy 
+    random.shuffle(shuffled)
+    return sorted(shuffled[:num_values])
+
+def compute_bootstrapped_sample(table):
+    n = len(table)
+    sample = []
+    for _ in range(n):
+        rand_index = random.randrange(0, n)
+        sample.append(table[rand_index])
+    return sample
+# end tree stuff
+
 # pa6 functions
 def print_tree(header, tree, class_name, built_string):
     if tree[0] == 'Attribute':
@@ -36,6 +51,8 @@ def select_attribute(instances, available_attributes, attribute_domains, header)
     # for now we are going to select an attribute randomly
     # TODO: come back after you can build a tree with random
     #       attribute selection and replace with entropy
+    if len(available_attributes) == 0:
+        return []
     rand_index = random.randrange(0, len(available_attributes))
     class_labels = unique_index(instances, -1)
 
