@@ -1,5 +1,6 @@
 import mysklearn.myutils as myutils
 import random
+import mysklearn.myevaluation as myevaluation
 
 class MySimpleLinearRegressor:
     """Represents a simple linear regressor.
@@ -472,12 +473,35 @@ class MyRandomForestClassifier:
         for i, val in enumerate(header):
             attribute_domains[val] = myutils.unique_index(X_train, i)
 
-        train = [X_train[i] + [y_train[i]] for i in range(len(X_train))]
-        available_attributes = header.copy()
         self.X_train = X_train
         self.y_train = y_train
+        sample_X_train, sample_x_test, sample_y_train, sample_y_test = myevaluation.train_test_split(X_train, y_train, test_size=0.33, shuffle=True)
+        train = [sample_X_train[i] + [sample_y_train[i]] for i in range(len(sample_X_train))]
+        
         for _ in range(self.N):
-            self.trees.append(myutils.tdidt(myutils.compute_bootstrapped_sample(self.X_train), available_attributes, attribute_domains, header))
+            available_attributes = header.copy()
+            self.trees.append(myutils.tdidt_forest(myutils.compute_bootstrapped_sample(train), available_attributes, attribute_domains, header, self.F))
+        
+        accuracies = []
+        for tree in self.trees:
+            header = ['att' + str(i) for i in range(len(sample_x_test[0]))]
+            prediction = []
+            for row in sample_x_test:
+                prediction.append(myutils.tdidt_predict(header, tree, row))
+            accuracy = 0
+            for i in range(len(prediction)):
+                if prediction[i] == sample_y_test[i]:
+                    accuracy += 1
+            accuracy /= len(sample_y_test)
+            accuracies.append([accuracy])
+        # find m most accurate
+        m_trees = []
+        for i in range(len(accuracies)):
+            accuracies[i].append(i)
+        accuracies = sorted(accuracies)
+        for i in range(self.M):
+            m_trees.append(self.trees[accuracies[-(i+1)][1]])
+        self.trees = m_trees
         
     def predict(self, X_test):
         """Makes predictions for test instances in X_test.
@@ -492,8 +516,11 @@ class MyRandomForestClassifier:
         header = ['att' + str(i) for i in range(len(X_test[0]))]
         res = []
         for row in X_test:
-            res.append(myutils.tdidt_predict(header, self.tree, row))
-        return res
+            curr = []
+            for tree in self.trees:
+                curr.append(myutils.tdidt_predict(header, tree, row))
+            res.append(curr)
+        return myutils.get_majority_votes(res)
 
     def print_decision_rules(self, attribute_names=None, class_name="class"):
         """Prints the decision rules from the tree in the format "IF att == val AND ... THEN class = label", one rule on each line.

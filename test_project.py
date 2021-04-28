@@ -141,6 +141,8 @@ def test_simple_linear_regressor_fit():
         ["Junior", "Python", "no", "yes"]
     ]
     y_train = ["False", "False", "True", "True", "True", "False", "True", "False", "True", "True", "True", "True", "True", "False"]
+    y_domain = myutils.get_unique(y_train)
     myline.fit(X_train, y_train)
-    for tree in myline.trees:
-        print(tree)
+    prediction = myline.predict([["Junior", "Python", "no", "yes"], ["Mid", "Java", "yes", "no"]])
+    for val in prediction:
+        assert(val in y_domain)

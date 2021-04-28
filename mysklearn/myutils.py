@@ -102,7 +102,6 @@ def partition_instances(instances, split_attribute, attribute_domains, header):
 
 def tdidt(current_instances, available_attributes, attribute_domains, header):
     # basic approach (uses recursion!!):
-
     # select an attribute to split on
     split_attribute = select_attribute(current_instances, available_attributes, attribute_domains, header)
     #print('splitting on', split_attribute)
@@ -135,6 +134,49 @@ def tdidt(current_instances, available_attributes, attribute_domains, header):
             return ['Leaf', majority_vote(prev), len(prev), prev_instances]
         else:
             subtree = tdidt(partition, available_attributes.copy(), attribute_domains.copy(), header.copy())
+            value_subtree.append(subtree)
+            # need to append subtree to value_subtree and appropriately append value_subtree to tree
+        tree.append(value_subtree)
+        prev = partition
+        prev_instances = len(current_instances)
+
+    return tree
+
+def tdidt_forest(current_instances, available_attributes, attribute_domains, header, F):
+    # basic approach (uses recursion!!):
+    subset_attributes = compute_random_subset(available_attributes, F)
+    # select an attribute to split on
+    split_attribute = select_attribute(current_instances, subset_attributes, attribute_domains, header)
+    #print('splitting on', split_attribute)
+    available_attributes.remove(split_attribute) # cannot split on same attr twice in a branch
+    # python is pass by object reference!!
+    tree = ['Attribute', split_attribute]
+
+    # group data by attribute domains (creates pairwise disjoint partitions)
+    partitions = partition_instances(current_instances, split_attribute, attribute_domains, header)
+    #print('partitions:', partitions)
+
+    prev = []
+    prev_instances = 0
+    # for each partition, repeat unless one of the following occurs (base case)
+    for attribute_value, partition in partitions.items():
+        #print('working with partition for', attribute_value)
+        value_subtree = ['Value', attribute_value]
+        subtree = []
+        # TODO: appending leaf nodes and subtrees appropriately to value_subtree
+        #    CASE 1: all class labels of the partition are the same => make a leaf node
+        if len(partition) > 0 and all_same_class(partition): # all same class checks if all the other values equal the first one
+            subtree = ['Leaf', partition[0][-1], len(partition), len(current_instances)]
+            value_subtree.append(subtree)
+        #    CASE 2: no more attributes to select (clash) => handle clash w/majority vote leaf node
+        elif len(partition) > 0 and len(available_attributes) == 0:
+            subtree = ['Leaf', majority_vote(partition), len(partition), len(current_instances)]
+            value_subtree.append(subtree)
+        #    CASE 3: no more instances to partition (empty partition) => backtrack and replace attribute node with majority vote leaf node
+        elif len(partition) == 0:
+            return ['Leaf', majority_vote(prev), len(prev), prev_instances]
+        else:
+            subtree = tdidt_forest(partition, available_attributes.copy(), attribute_domains.copy(), header.copy(), F)
             value_subtree.append(subtree)
             # need to append subtree to value_subtree and appropriately append value_subtree to tree
         tree.append(value_subtree)
@@ -353,3 +395,13 @@ def get_prediction_index(vals):
         if vals[i] > vals[max_index]:
             max_index = i
     return max_index
+
+def get_majority_votes(vals):
+    res = []
+    for row in vals:
+        unique_vals = get_unique(row)
+        counts = [0 for _ in range(len(unique_vals))]
+        for val in row:
+            counts[unique_vals.index(val)] += 1
+        res.append(unique_vals[counts.index(max(counts))])
+    return res
