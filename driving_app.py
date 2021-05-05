@@ -25,8 +25,9 @@ def predict():
     road = request.args.get('roadcond', '')
     light = request.args.get('light', '')
     junction = request.args.get('junction', '')
+    severity = request.args.get('severity', '')
 
-    prediction = myb.predict([[weather, road, light, junction]])
+    prediction = myb.predict([[weather, road, light, junction, severity]])
 
     if prediction is not None:
         result = {'prediction': prediction}
